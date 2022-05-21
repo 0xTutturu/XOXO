@@ -3,7 +3,11 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Base64.sol";
+
 import "./ERC721G.sol";
+import "./libraries/SVG.sol";
+import "./libraries/Utils.sol";
 
 import "hardhat/console.sol";
 
@@ -122,23 +126,47 @@ contract XOXO is ERC721G, Ownable, ReentrancyGuard {
         uint256 state = checkGameState(inMemGame);
 
         if (state == 2) {
-            tokenDataTwo.wins += 1;
+            tokenDataTwo.totalPlayed += 1;
             tokenDataTwo.inPlay = false;
+            /* tokenDataTwo.scoreHistory = _newScore(
+                tokenDataTwo.scoreHistory,
+                tokenDataTwo.totalPlayed,
+                3
+            ); */
+            tokenDataTwo.scoreHistory = _newScore(tokenDataTwo, 3);
 
-            tokenDataOne.loses += 1;
+            tokenDataOne.totalPlayed += 1;
             tokenDataOne.XorO = tokenDataTwo.XorO;
             tokenDataOne.inPlay = false;
+            /* tokenDataOne.scoreHistory = _newScore(
+                tokenDataOne.scoreHistory,
+                tokenDataOne.totalPlayed,
+                1
+            ); */
+            tokenDataOne.scoreHistory = _newScore(tokenDataOne, 1);
 
             _tokenData[tokenOne] = tokenDataOne;
             _tokenData[tokenTwo] = tokenDataTwo;
             tokensAndGames[_gameId] |= ((inMemGame | 6) << 32);
         } else if (state == 1) {
-            tokenDataOne.wins += 1;
+            tokenDataOne.totalPlayed += 1;
             tokenDataOne.inPlay = false;
+            /* tokenDataOne.scoreHistory = _newScore(
+                tokenDataOne.scoreHistory,
+                tokenDataOne.totalPlayed,
+                3
+            ); */
+            tokenDataOne.scoreHistory = _newScore(tokenDataOne, 3);
 
-            tokenDataTwo.loses += 1;
+            tokenDataTwo.totalPlayed += 1;
             tokenDataTwo.XorO = tokenDataOne.XorO;
             tokenDataTwo.inPlay = false;
+            /* tokenDataTwo.scoreHistory = _newScore(
+                tokenDataTwo.scoreHistory,
+                tokenDataTwo.totalPlayed,
+                1
+            ); */
+            tokenDataTwo.scoreHistory = _newScore(tokenDataTwo, 1);
 
             _tokenData[tokenOne] = tokenDataOne;
             _tokenData[tokenTwo] = tokenDataTwo;
@@ -203,19 +231,16 @@ contract XOXO is ERC721G, Ownable, ReentrancyGuard {
         returns (string memory)
     {
         if (!_exists(_tokenId)) revert();
-        TokenData memory tokenData = _tokenDataOf(_tokenId);
 
-        if (tokenData.XorO == 0) return "X";
-        else return "O";
+        return _formatTokenURI(getImage(_tokenId));
     }
 
     /* Internal */
 
-    function checkGameState(uint256 _board) internal pure returns (uint256) {
-        _board >>= 4;
+    function checkGameState(uint256 _board) public pure returns (uint256) {
+        _board >>= 3;
 
-        uint256 masks = 0xFC003F00CCC186106187030306184003F;
-
+        uint256 masks = 0xFC003F00CCC30C30C30F03030C30C003F; //0xFC003F00CCC186106187030306184003F;
         uint256 boardShifts = 0x190480;
 
         while (masks != 0) {
@@ -229,6 +254,120 @@ contract XOXO is ERC721G, Ownable, ReentrancyGuard {
         }
 
         return 0;
+    }
+
+    function _newScore(TokenData memory tokenData, uint256 _winOrLoss)
+        internal
+        pure
+        returns (uint256[] memory)
+    {
+        uint256 _totalPlayed = tokenData.totalPlayed;
+        uint256 index = _totalPlayed / 128;
+        uint256 position = (_totalPlayed - 1) % 128;
+        uint256[] memory changedScore = new uint256[](index + 1);
+
+        for (uint256 i; i < tokenData.scoreHistory.length; i++) {
+            changedScore[i] = tokenData.scoreHistory[i];
+        }
+        if (tokenData.scoreHistory.length < index + 1) {
+            uint256 score;
+            score |= _winOrLoss << (position << 1);
+            changedScore[index] = score;
+        }
+        return changedScore;
+    }
+
+    /*  // 1 is loss, 3 is win
+    function _newScore(
+        uint256[] memory _score,
+        uint256 _totalPlayed,
+        uint256 _winOrLoss
+    ) internal pure returns (uint256[] memory) {
+        uint256 index = _totalPlayed / 128;
+        uint256 position = (_totalPlayed - 1) % 128;
+        uint256[] memory newScore = new uint256[](index + 1);
+        newScore = _score;
+        // same as multiplied by two
+        newScore[index] |= _winOrLoss << (position << 1);
+        return newScore;
+    } */
+
+    function getImage(uint256 _tokenId) public view returns (string memory) {
+        if (!_exists(_tokenId)) revert();
+        TokenData memory tokenData = _tokenDataOf(_tokenId);
+
+        uint256[] memory _score = tokenData.scoreHistory;
+        uint256 totalPlayed = tokenData.totalPlayed;
+        uint8 _type = tokenData.XorO;
+
+        string
+            memory image = '<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" style="background:#9061F9;border-style:solid;border-color:white;">';
+        string memory typeText = _type == 0 ? "X" : "O";
+
+        for (uint256 i; i < totalPlayed; i++) {
+            uint256 index = totalPlayed / 128;
+            uint256 position = i % 128;
+            uint256 result = (_score[index] >> (position << 1)) & 3;
+            uint256 xPosition = (i % 24) * 40 + 10;
+            uint256 yPosition = (i / 24) * 50 + 50;
+            string memory xOrO = result == 1 ? "O" : "X";
+
+            image = string.concat(
+                image,
+                svg.text(
+                    string.concat(
+                        svg.prop("x", utils.uint2str(xPosition)),
+                        svg.prop("y", utils.uint2str(yPosition)),
+                        svg.prop("font-size", "70"),
+                        svg.prop("fill", "black")
+                    ),
+                    string.concat(svg.cdata(xOrO))
+                )
+            );
+        }
+        image = string.concat(
+            image,
+            svg.text(
+                string.concat(
+                    svg.prop("x", "280"),
+                    svg.prop("y", "700"),
+                    svg.prop("font-size", "600"),
+                    svg.prop("fill", "white")
+                ),
+                string.concat(svg.cdata(typeText))
+            ),
+            "</svg>"
+        );
+
+        string memory baseURL = "data:image/svg+xml;base64,";
+        string memory svgBase64Encoded = Base64.encode(bytes(image));
+        string memory base64Image = string(
+            abi.encodePacked(baseURL, svgBase64Encoded)
+        );
+
+        return base64Image;
+    }
+
+    function _formatTokenURI(string memory imageURI)
+        internal
+        pure
+        returns (string memory)
+    {
+        return
+            string(
+                abi.encodePacked(
+                    "data:application/json;base64,",
+                    Base64.encode(
+                        bytes(
+                            abi.encodePacked(
+                                '{"name": "XOXO", "description": "On chain Tic-Tac-Toe war game.", "image":"',
+                                imageURI,
+                                '"}'
+                            )
+                        )
+                    )
+                )
+            );
     }
 
     /* Restricted */

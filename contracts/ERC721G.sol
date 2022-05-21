@@ -53,11 +53,11 @@ abstract contract ERC721G {
     struct TokenData {
         address owner;
         uint40 playStart;
-        uint16 wins;
-        uint16 loses;
+        uint32 totalPlayed;
         uint8 XorO;
         bool inPlay;
         bool nextTokenDataSet;
+        uint256[] scoreHistory;
     }
 
     struct UserData {
@@ -128,6 +128,7 @@ abstract contract ERC721G {
 
             // don't update for airdrops
             if (to == msg.sender) userData.numMinted += uint40(quantity);
+            uint256[] memory scoreTracker;
 
             // don't have to care about next token data if only minting one
             // could optimize to implicitly flag last token id of batch
@@ -135,11 +136,11 @@ abstract contract ERC721G {
             TokenData memory tokenData = TokenData(
                 to,
                 uint40(0),
-                uint16(0),
-                uint16(0),
+                uint32(0),
                 uint8(_type),
                 false,
-                quantity == 1
+                quantity == 1,
+                scoreTracker
             );
 
             userData.balance += uint40(quantity);
