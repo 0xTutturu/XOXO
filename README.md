@@ -1,15 +1,6 @@
-# Basic Sample Hardhat Project
+# XOXO
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, a sample script that deploys that contract, and an example of a task implementation, which simply lists the available accounts.
+This is an on-chain implementation of tic tac toe that uses NFTs as player characters. Upon losing a game, an X is converted to an O and vice versa.
 
-Try running some of the following tasks:
-
-```shell
-npx hardhat accounts
-npx hardhat compile
-npx hardhat clean
-npx hardhat test
-npx hardhat node
-node scripts/sample-script.js
-npx hardhat help
-```
+TODO:
+On chain metadata
