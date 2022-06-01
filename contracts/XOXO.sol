@@ -151,21 +151,11 @@ contract XOXO is ERC721G, Ownable, ReentrancyGuard {
         } else if (state == 1) {
             tokenDataOne.totalPlayed += 1;
             tokenDataOne.inPlay = false;
-            /* tokenDataOne.scoreHistory = _newScore(
-                tokenDataOne.scoreHistory,
-                tokenDataOne.totalPlayed,
-                3
-            ); */
             tokenDataOne.scoreHistory = _newScore(tokenDataOne, 3);
 
             tokenDataTwo.totalPlayed += 1;
             tokenDataTwo.XorO = tokenDataOne.XorO;
             tokenDataTwo.inPlay = false;
-            /* tokenDataTwo.scoreHistory = _newScore(
-                tokenDataTwo.scoreHistory,
-                tokenDataTwo.totalPlayed,
-                1
-            ); */
             tokenDataTwo.scoreHistory = _newScore(tokenDataTwo, 1);
 
             _tokenData[tokenOne] = tokenDataOne;
@@ -276,21 +266,6 @@ contract XOXO is ERC721G, Ownable, ReentrancyGuard {
         }
         return changedScore;
     }
-
-    /*  // 1 is loss, 3 is win
-    function _newScore(
-        uint256[] memory _score,
-        uint256 _totalPlayed,
-        uint256 _winOrLoss
-    ) internal pure returns (uint256[] memory) {
-        uint256 index = _totalPlayed / 128;
-        uint256 position = (_totalPlayed - 1) % 128;
-        uint256[] memory newScore = new uint256[](index + 1);
-        newScore = _score;
-        // same as multiplied by two
-        newScore[index] |= _winOrLoss << (position << 1);
-        return newScore;
-    } */
 
     function getImage(uint256 _tokenId) public view returns (string memory) {
         if (!_exists(_tokenId)) revert();
